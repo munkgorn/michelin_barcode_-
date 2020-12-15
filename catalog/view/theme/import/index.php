@@ -16,18 +16,19 @@
                     <h3>Import Group & Barcode</h3>
                 </div>
                 <div class="card-body">
-                    <form action="index.php?route=import/importAll" method="post" enctype="multipart/form-data">
+                    <form action="#" method="post" enctype="multipart/form-data" id="form-import-group">
                         <div class="form-group">
                             <label for="">File</label>
                             <div class="input-group">
                                 <div class="custom-file">
-                                    <input type="file" name="import_file" class="custom-file-input" id="inputImportConfigFlexibleGroup" aria-describedby="inputGroupFileAddon04" required accept="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel" />  >
-                                    <label class="custom-file-label" for="inputImportConfigFlexibleGroup">Browse Excel File (.xlsx)</label>
+                                    <input type="file" name="import_file_group" class="custom-file-input" id="import_file_group" aria-describedby="inputGroupFileAddon04" required accept="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel" />  >
+                                    <label class="custom-file-label" for="import_file_group">Browse Excel File (.xlsx)</label>
                                 </div>
                                 <div class="input-group-append">
                                     <button class="btn btn-outline-primary" type="submit" id=""><i class="fas fa-file-excel"></i> Import</button>
                                 </div>
                             </div>
+                            <div id="result_submit_form"></div>
                         </div>
                     </form>
                 </div>
@@ -165,6 +166,84 @@ $(document).ready(function () {
 		$(this).next('label.custom-file-label').html('<span class="text-dark">'+fileName+'</span>');
 		console.log(fileName);
 	});
+});
+$( "#form-import-group" ).submit(function( event ) {
+    $('#result_submit_form').html('');
+    // var jform = new FormData();
+    // jform.append('import_file',$('#import_file_group').val());
 
+    var fd = new FormData();
+    var files = $('#import_file_group')[0].files[0];
+    fd.append('import_file',files);
+
+
+    $.ajax({
+        url: 'index.php?route=import/importAll',
+        type: 'POST',
+        data: fd,
+        // dataType: 'html',
+        mimeType: 'multipart/form-data', // this too
+        contentType: false,
+        cache: false,
+        processData: false,
+        dataType: 'json',
+    })
+    .done(function(data) {
+        console.log(data);
+        $('#result_submit_form').html('Upload '+data.status+'. Please waiting for create file...');
+        if(data.status=="Success"){
+            $.ajax({
+                url: 'index.php?route=import/importAll_gen_barcode',
+                type: 'GET',
+                data: {
+                    xlsx: data.xlsx
+                },
+                // dataType: 'html',
+                // mimeType: 'multipart/form-data', // this too
+
+                // contentType: false,
+                // cache: false,
+                // processData: false,
+                dataType: 'json',
+            })
+            .done(function(data_ajax2) {
+                // console.log(data);
+                $('#result_submit_form').html('Create file '+data_ajax2.result +' File count: '+ data_ajax2.count_file);
+                for (i = 1; i <= data_ajax2.count_file; i++) {
+                    console.log(i);
+                    $.ajax({
+                        url: 'index.php?route=import/importAll_import_barcode',
+                        type: 'GET',
+                        dataType: 'html',
+                        data: {file_name: i},
+                        async: false
+                    })
+                    .done(function() {
+
+                        $('#result_submit_form').html('Import csv to database : ' + i + '/' + data_ajax2.count_file);
+                        console.log("success"+'importAll_import_barcode');
+                    })
+                    .fail(function() {
+                        console.log("error"+'importAll_import_barcode');
+                    })
+                    .always(function() {
+                        console.log("complete"+'importAll_import_barcode');
+                    });
+                    
+                }
+            })
+            .fail(function(a,b,c) {
+                console.log(a);
+                console.log(b);
+                console.log(c);
+            });
+        }
+    })
+    .fail(function(a,b,c) {
+        console.log(a);
+        console.log(b);
+        console.log(c);
+    });
+  event.preventDefault();
 });
 </script>
